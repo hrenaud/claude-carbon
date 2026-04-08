@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FACTORS_FILE="${SCRIPT_DIR}/../data/factors.json"
 DB_PATH="${HOME}/.claude/claude-carbon/carbon.db"
 
-# Exit silently if DB doesn't exist
+# Exit silently if DB doesn't exist (plugin not set up yet)
 [ -f "$DB_PATH" ] || exit 0
 
 # Load emission factors once
@@ -127,10 +127,8 @@ fi
 # Project name = last path segment of cwd
 PROJECT="$(basename "$CURRENT_DIR" 2>/dev/null)" || PROJECT="unknown"
 
-# Fallback timestamp
+# Current timestamp
 NOW="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null)" || NOW=""
-[ -n "$STARTED_AT" ] || STARTED_AT="$NOW"
-[ -n "$ENDED_AT" ] || ENDED_AT="$NOW"
 
 # Sanitize strings for SQL
 SESSION_ID="${SESSION_ID//\'/\'\'}"
