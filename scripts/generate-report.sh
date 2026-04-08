@@ -113,10 +113,14 @@ if [ "$DAYS_ELAPSED" -gt 0 ]; then
   PROJ_LINEAR="$(echo "$TOTAL_CO2_RAW $DAYS_ELAPSED" | LC_ALL=C awk '{printf "%.1f", ($1 / $2) * 365 / 1000000}')"
 
   # Trend: last 30 days daily rate extrapolated
-  LAST_MONTH_DATA="$(sqlite3 "$DB_PATH" "SELECT SUM(co2_grams), MIN(started_at), MAX(started_at) FROM sessions ${WHERE} AND started_at >= date('now', '-30 days');" | tr '|' ' ')"
-  LAST_MONTH_CO2="$(echo "$LAST_MONTH_DATA" | awk '{print $1}')"
-  LAST_MONTH_START="$(echo "$LAST_MONTH_DATA" | awk '{print $2}' | cut -c1-10)"
-  LAST_MONTH_END="$(echo "$LAST_MONTH_DATA" | awk '{print $3}' | cut -c1-10)"
+  if [ -n "$WHERE" ]; then
+    LAST_MONTH_DATA="$(sqlite3 "$DB_PATH" "SELECT SUM(co2_grams), MIN(started_at), MAX(started_at) FROM sessions ${WHERE} AND started_at >= date('now', '-30 days');" | tr '|' ' ')"
+  else
+    LAST_MONTH_DATA="$(sqlite3 "$DB_PATH" "SELECT SUM(co2_grams), MIN(started_at), MAX(started_at) FROM sessions WHERE started_at >= date('now', '-30 days');" | tr '|' ' ')"
+  fi
+  LAST_MONTH_CO2="$(echo "$LAST_MONTH_DATA" | LC_ALL=C awk '{print $1}')"
+  LAST_MONTH_START="$(echo "$LAST_MONTH_DATA" | LC_ALL=C awk '{print $2}' | cut -c1-10)"
+  LAST_MONTH_END="$(echo "$LAST_MONTH_DATA" | LC_ALL=C awk '{print $3}' | cut -c1-10)"
   LAST_MONTH_DAYS="$(( ( $(date -j -f "%Y-%m-%d" "${LAST_MONTH_END}" +%s 2>/dev/null || date -d "${LAST_MONTH_END}" +%s 2>/dev/null) - $(date -j -f "%Y-%m-%d" "${LAST_MONTH_START}" +%s 2>/dev/null || date -d "${LAST_MONTH_START}" +%s 2>/dev/null) ) / 86400 ))"
   if [ "$LAST_MONTH_DAYS" -gt 0 ]; then
     PROJ_TREND="$(echo "$LAST_MONTH_CO2 $LAST_MONTH_DAYS" | LC_ALL=C awk '{printf "%.1f", ($1 / $2) * 365 / 1000000}')"
@@ -125,8 +129,8 @@ if [ "$DAYS_ELAPSED" -gt 0 ]; then
   fi
 
   # Sort low-high for display (compare as floats)
-  LOW="$(echo "$PROJ_LINEAR $PROJ_TREND" | awk '{if ($1 <= $2) print $1; else print $2}')"
-  HIGH="$(echo "$PROJ_LINEAR $PROJ_TREND" | awk '{if ($1 >= $2) print $1; else print $2}')"
+  LOW="$(echo "$PROJ_LINEAR $PROJ_TREND" | LC_ALL=C awk '{if ($1 <= $2) print $1; else print $2}')"
+  HIGH="$(echo "$PROJ_LINEAR $PROJ_TREND" | LC_ALL=C awk '{if ($1 >= $2) print $1; else print $2}')"
   PROJECTION="${LOW} - ${HIGH}"
 else
   PROJECTION="0"
@@ -137,7 +141,7 @@ TOP_MODEL_DISPLAY="$(echo "$TOP_MODEL" | sed 's/claude-//' | sed 's/-4-6//' | se
 
 # ── Monthly bars HTML ───────────────────────────────────────
 MONTHLY_DATA="$(sqlite3 -separator '|' "$DB_PATH" "SELECT substr(started_at, 1, 7), SUM(co2_grams) FROM sessions ${WHERE} GROUP BY substr(started_at, 1, 7) ORDER BY substr(started_at, 1, 7);")"
-MAX_MONTH_CO2="$(echo "$MONTHLY_DATA" | awk -F'|' 'BEGIN{m=0} {if($2>m)m=$2} END{print m}')"
+MAX_MONTH_CO2="$(echo "$MONTHLY_DATA" | LC_ALL=C awk -F'|' 'BEGIN{m=0} {if($2>m)m=$2} END{print m}')"
 
 MONTHLY_BARS=""
 MONTH_NAMES="Jan Fév Mar Avr Mai Jun Jul Aoû Sep Oct Nov Déc"
@@ -145,7 +149,7 @@ while IFS='|' read -r month_key month_co2; do
   [ -z "$month_key" ] && continue
   month_num="${month_key:5:2}"
   month_num_clean="$(echo "$month_num" | sed 's/^0//')"
-  month_label="$(echo "$MONTH_NAMES" | awk -v n="$month_num_clean" '{print $n}')"
+  month_label="$(echo "$MONTH_NAMES" | LC_ALL=C awk -v n="$month_num_clean" '{print $n}')"
   if [ "$MAX_MONTH_CO2" -gt 0 ] 2>/dev/null; then
     pct="$(echo "$month_co2 $MAX_MONTH_CO2" | LC_ALL=C awk '{printf "%.0f", ($1/$2)*100}')"
   else
@@ -313,7 +317,7 @@ fi
 if [ -z "$PW_PATH" ]; then
   echo "Error: playwright-core not found." >&2
   echo "Install: npm install -g playwright-core && npx playwright install chromium" >&2
-  rm -f "$TMP_SUMMARY_FR" "$TMP_SUMMARY_EN"
+  rm -f "$TMP_SUMMARY_FR" "$TMP_SUMMARY_EN" "$TMP_DETAILED_FR" "$TMP_DETAILED_EN"
   exit 1
 fi
 

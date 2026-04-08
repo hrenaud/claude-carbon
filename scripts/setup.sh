@@ -63,20 +63,20 @@ echo "────────────────────────�
 echo "Summary:"
 
 TOTAL_SESSIONS="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sessions;")"
-TOTAL_CO2_G="$(sqlite3 "$DB_PATH" "SELECT COALESCE(SUM(co2_grams), 0) FROM sessions;" | awk '{printf "%.0f", $1}')"
+TOTAL_CO2_G="$(sqlite3 "$DB_PATH" "SELECT COALESCE(SUM(co2_grams), 0) FROM sessions;" | LC_ALL=C awk '{printf "%.0f", $1}')"
 CURRENT_YEAR="$(date +%Y)"
-YEAR_CO2_G="$(sqlite3 "$DB_PATH" "SELECT COALESCE(SUM(co2_grams), 0) FROM sessions WHERE started_at LIKE '${CURRENT_YEAR}%';" | awk '{printf "%.0f", $1}')"
+YEAR_CO2_G="$(sqlite3 "$DB_PATH" "SELECT COALESCE(SUM(co2_grams), 0) FROM sessions WHERE started_at LIKE '${CURRENT_YEAR}%';" | LC_ALL=C awk '{printf "%.0f", $1}')"
 
 # Adaptive CO2 units for total
 if [ "$TOTAL_CO2_G" -ge 1000 ] 2>/dev/null; then
-  TOTAL_CO2_DISPLAY="$(echo "$TOTAL_CO2_G" | awk '{printf "%.1fkg", $1/1000}')"
+  TOTAL_CO2_DISPLAY="$(echo "$TOTAL_CO2_G" | LC_ALL=C awk '{printf "%.1fkg", $1/1000}')"
 else
   TOTAL_CO2_DISPLAY="${TOTAL_CO2_G}g"
 fi
 
 # Adaptive CO2 units for year
 if [ "$YEAR_CO2_G" -ge 1000 ] 2>/dev/null; then
-  YEAR_CO2_DISPLAY="$(echo "$YEAR_CO2_G" | awk '{printf "%.1fkg", $1/1000}')"
+  YEAR_CO2_DISPLAY="$(echo "$YEAR_CO2_G" | LC_ALL=C awk '{printf "%.1fkg", $1/1000}')"
 else
   YEAR_CO2_DISPLAY="${YEAR_CO2_G}g"
 fi
