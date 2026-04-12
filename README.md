@@ -1,18 +1,36 @@
 # claude-carbon
 
+[![GitHub stars](https://img.shields.io/github/stars/gwittebolle/claude-carbon)](https://github.com/gwittebolle/claude-carbon/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/gwittebolle/claude-carbon)](https://github.com/gwittebolle/claude-carbon/releases)
+
 Track the carbon footprint of your Claude Code sessions.
+
+**1. Install (or update):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gwittebolle/claude-carbon/main/install.sh | bash
+```
+
+Same command to install and to update to the latest version.
+
+**2. Restart Claude Code.** Your CO2 appears in the status line:
 
 ```
 🟢 Opus 4.6 (1M context) ░░░░ 6% | $3.20 | 145g CO₂ | claude cowork
 ```
+
+**3. Use the slash commands:**
+
+- `/carbon-report` - text report with totals, equivalences, top sessions
+- `/carbon-card` - generate shareable PNG report cards (requires `playwright-core`, see [Dependencies](#dependencies))
 
 ## What it does
 
 - Adds a live CO2 estimate to the Claude Code status line, next to the session cost
 - Persists each session to a local SQLite database
 - Backfills historical data from existing `~/.claude` transcripts
-- Generates shareable PNG report cards for LinkedIn
-- Exposes a `/claude-carbon:report` skill for a full emissions breakdown
+- Two slash commands: `/carbon-report` (text) and `/carbon-card` (PNG)
 
 ## Example report
 
@@ -20,51 +38,65 @@ Track the carbon footprint of your Claude Code sessions.
   <img src="docs/example-report-v2.png" alt="Claude Carbon Report" width="540">
 </p>
 
-Generate yours:
+Generate yours with `/carbon-card` in Claude Code. Exports summary and detailed PNGs to `exports/`.
+
+<details>
+<summary>Advanced options (CLI)</summary>
 
 ```bash
-# Since January 1st (default)
-bash scripts/generate-report.sh
-
 # Since a specific date
-bash scripts/generate-report.sh --since 2026-03-01
+bash ~/code/claude-carbon/scripts/generate-report.sh --since 2026-03-01
 
 # All time
-bash scripts/generate-report.sh --all
+bash ~/code/claude-carbon/scripts/generate-report.sh --all
 ```
 
-Exports two PNGs to `exports/`: a summary card and a detailed card with per-project breakdown.
+</details>
 
-## Install
+<details>
+<summary>Custom install directory</summary>
+
+```bash
+CLAUDE_CARBON_DIR=~/my-path/claude-carbon curl -fsSL https://raw.githubusercontent.com/gwittebolle/claude-carbon/main/install.sh | bash
+```
+
+</details>
+
+<details>
+<summary>Manual install</summary>
 
 ```bash
 git clone https://github.com/gwittebolle/claude-carbon.git ~/code/claude-carbon
 bash ~/code/claude-carbon/scripts/setup.sh
 ```
 
-The setup script checks dependencies, creates the SQLite database, backfills your existing Claude Code sessions, and prints the total CO2 emitted so far.
-
-Then add to `~/.claude/settings.json` (or `settings.local.json`):
+Then add to `~/.claude/settings.json`:
 
 ```json
 {
   "statusLine": {
     "type": "command",
     "command": "~/code/claude-carbon/scripts/statusline.sh"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/code/claude-carbon/scripts/persist-session.sh"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
-And add the Stop hook to persist sessions (append to your existing `hooks.Stop` array):
+Restart Claude Code.
 
-```json
-{
-  "type": "command",
-  "command": "~/code/claude-carbon/scripts/persist-session.sh"
-}
-```
-
-Restart Claude Code. The CO2 estimate appears in the status line.
+</details>
 
 ## How it works
 
@@ -86,14 +118,23 @@ _\*Claude Code does not expose `cache_read_input_tokens` separately in the statu
 
 ## Commands
 
-| Command                 | What it does                                                   |
-| ----------------------- | -------------------------------------------------------------- |
-| `setup.sh`              | Init database, backfill historical sessions, show total        |
-| `statusline.sh`         | Status line script (called automatically by Claude Code)       |
-| `persist-session.sh`    | Stop hook (saves session data on exit)                         |
-| `backfill.sh`           | Re-parse all historical JSONL transcripts (incl. subagents)    |
-| `generate-report.sh`    | Export shareable PNG report cards                              |
-| `/claude-carbon:report` | In-session text report with totals, equivalences, top sessions |
+| Command          | What it does                                        |
+| ---------------- | --------------------------------------------------- |
+| `/carbon-report` | Text report with totals, equivalences, top sessions |
+| `/carbon-card`   | Generate shareable PNG report cards                 |
+
+<details>
+<summary>Scripts (run automatically, rarely needed manually)</summary>
+
+| Script               | What it does                                                |
+| -------------------- | ----------------------------------------------------------- |
+| `setup.sh`           | Init database, backfill historical sessions, show total     |
+| `statusline.sh`      | Status line script (called automatically by Claude Code)    |
+| `persist-session.sh` | Stop hook (saves session data on exit)                      |
+| `backfill.sh`        | Re-parse all historical JSONL transcripts (incl. subagents) |
+| `generate-report.sh` | Export PNG report cards (CLI, with `--since` / `--all`)     |
+
+</details>
 
 ## Emission factors
 
@@ -118,9 +159,16 @@ Factors are editable in `data/factors.json`. See [METHODOLOGY.md](METHODOLOGY.md
 
 - `jq` - JSON parsing
 - `sqlite3` - local database
-- `playwright-core` - PNG export only (optional)
+- `playwright-core` + Chromium - PNG export for `/carbon-card` (optional)
 
 `jq` and `sqlite3` are pre-installed on macOS. On Linux: `apt install jq sqlite3`.
+
+To use `/carbon-card`, install Playwright and its Chromium browser:
+
+```bash
+npm install -g playwright-core
+npx playwright install chromium
+```
 
 ## Reduce your footprint
 
